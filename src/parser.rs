@@ -1,12 +1,24 @@
+use std::iter::Peekable;
+
 pub struct Parser {
     text: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Identifier(String),
+    Literal(String),
     LBrace,
-    RBrace
+    RBrace,
+    Gt,
+    Colon,
+    EOF,
+}
+
+#[derive(Debug)]
+pub enum ASTNode {
+    App { children: Vec<ASTNode> },
+    Element { name: String, value: String },
 }
 
 impl Parser {
@@ -14,7 +26,7 @@ impl Parser {
         Self { text }
     }
 
-    pub fn parse(&self) -> Vec<Token> {
+    pub fn tokenize(&self) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut chars = self.text.chars().peekable();
 
@@ -22,6 +34,23 @@ impl Parser {
             match c {
                 '{' => tokens.push(Token::LBrace),
                 '}' => tokens.push(Token::RBrace),
+                '>' => tokens.push(Token::Gt),
+                ':' => tokens.push(Token::Colon),
+                c if c == '"' => {
+                    let mut literal = String::new();
+
+                    while let Some(&next) = chars.peek() {
+                        if next != '"' {
+                            literal.push(chars.next().unwrap());
+                        } else {
+                            chars.next();
+
+                            break;
+                        }
+                    }
+
+                    tokens.push(Token::Literal(literal));
+                }
                 c if c.is_alphabetic() => {
                     let mut ident = String::new();
                     ident.push(c);
@@ -35,11 +64,65 @@ impl Parser {
                     }
 
                     tokens.push(Token::Identifier(ident));
-                },
+                }
                 _ => {}
             }
         }
 
+        tokens.push(Token::EOF);
+
         tokens
+    }
+
+    pub fn parse(&self, tokens: &[Token]) -> ASTNode {
+        let mut tokens = tokens.iter().peekable();
+
+        match tokens.next() {
+            Some(Token::Identifier(id)) if id == "app" => {
+                // todo: Implement a `expect_token` function
+
+                let mut children = Vec::new();
+
+                while let Some(token) = tokens.peek() {
+                    if matches!(token, Token::RBrace) {
+                        tokens.next();
+                        break;
+                    }
+
+                    match token {
+                        Token::Gt => {
+                            tokens.next();
+
+                            let mut value = String::new();
+
+                            let name = if let Some(Token::Identifier(id)) = tokens.next() {
+                                id.clone()
+                            } else {
+                                panic!("Expected identifier after '>'");
+                            };
+
+                            if let Some(Token::Colon) = tokens.peek() {
+                                tokens.next();
+
+                                value = if let Some(Token::Literal(val)) = tokens.next() {
+                                    val.clone()
+                                } else {
+                                    panic!("Expected string literal after :");
+                                };
+                            }
+
+                            let node = ASTNode::Element { name, value };
+                            children.push(node);
+                        }
+                        _ => {
+                            tokens.next();
+                        }
+                    }
+                }
+
+                ASTNode::App { children }
+            }
+            _ => panic!("Expected 'app'"),
+        }
     }
 }

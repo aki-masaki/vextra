@@ -24,9 +24,10 @@ fn main() -> Result<(), std::io::Error> {
     println!("{}", file);
 
     let parser = Parser::new(file);
-    let tokens = parser.parse();
+    let tokens = parser.tokenize();
+    let ast = parser.parse(&tokens);
 
-    println!("{:?}", tokens);
+    println!("{:?}", ast);
 
     Ok(())
 }
