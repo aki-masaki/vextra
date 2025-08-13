@@ -1,28 +1,10 @@
-#![allow(dead_code)]
+use crate::parser::Parser;
+use crate::args::parse_args;
 
-const HELP: &str = "\
-Vextra
+mod args;
+mod parser;
 
-USAGE:
-  vextra [OPTIONS] [INPUT]
-
-FLAGS:
-  -h, --help            Prints help information
-
-OPTIONS:
-  --output PATH         Sets an output path [default: /out]
-
-ARGS:
-  <INPUT> The .vex file to parse
-";
-
-#[derive(Debug)]
-struct AppArgs {
-    input: std::path::PathBuf,
-    output: Option<std::path::PathBuf>,
-}
-
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let args = match parse_args() {
         Ok(v) => v,
         Err(e) => {
@@ -31,27 +13,20 @@ fn main() {
         }
     };
 
-    println!("{:#?}", args);
-}
-
-fn parse_args() -> Result<AppArgs, pico_args::Error> {
-    let mut pargs = pico_args::Arguments::from_env();
-
-    if pargs.contains(["-h", "--help"]) {
-        print!("{}", HELP);
-        std::process::exit(0);
-    }
-
-    let args = AppArgs {
-        output: pargs.opt_value_from_os_str("--output", parse_path)?,
-        input: pargs.free_from_str()?,
+    let file = match std::fs::read_to_string(args.input) {
+        Ok(file) => file,
+        Err(err) => {
+            println!("{}", err);
+            std::process::exit(1);
+        }
     };
 
-    pargs.finish();
+    println!("{}", file);
 
-    Ok(args)
-}
+    let parser = Parser::new(file);
+    let tokens = parser.parse();
 
-fn parse_path(s: &std::ffi::OsStr) -> Result<std::path::PathBuf, &'static str> {
-    Ok(s.into())
+    println!("{:?}", tokens);
+
+    Ok(())
 }
