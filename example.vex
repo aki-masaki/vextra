@@ -2,6 +2,7 @@ app:"Page Title" {
   >div {
     >label:"Hello World"  #{fg:green}
     >label:"Second label" #{fg:red,   size:big}
+    >input %{type:text, placeholder:Username}
   }
 }
 

@@ -1,3 +1,4 @@
+use crate::ast::Attributes;
 use crate::ast::ASTNode;
 use crate::ast::Styles;
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ pub struct Parser {
 pub enum Token {
     Identifier(String),
     Literal(String),
+    Number(i16),
     LBrace,
     RBrace,
     Gt,
@@ -18,7 +20,8 @@ pub enum Token {
     Eof,
     Hash,
     Comma,
-    Number(i16),
+    At,
+    Percent
 }
 
 impl Parser {
@@ -38,6 +41,8 @@ impl Parser {
                 ':' => tokens.push(Token::Colon),
                 '#' => tokens.push(Token::Hash),
                 ',' => tokens.push(Token::Comma),
+                '@' => tokens.push(Token::At),
+                '%' => tokens.push(Token::Percent),
                 '"' => {
                     let mut literal = String::new();
 
@@ -139,6 +144,7 @@ impl Parser {
             let mut children = Vec::new();
 
             let mut styles = Styles(HashMap::new());
+            let mut attributes = Attributes(HashMap::new());
 
             // Value
             if let Some(Token::Colon) = tokens.peek() {
@@ -192,6 +198,47 @@ impl Parser {
                 }
             }
 
+            // Attributes
+            if let Some(Token::Percent) = tokens.peek() {
+                tokens.next(); // skip %
+
+                if let Some(Token::LBrace) = tokens.peek() {
+                    tokens.next(); // skip {
+
+                    while let Some(token) = tokens.peek() {
+                        if matches!(token, Token::RBrace) {
+                            tokens.next(); // skip }
+                            break;
+                        }
+
+                        if matches!(token, Token::Comma) {
+                            tokens.next(); // skip ,
+                        }
+
+                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
+                            k.clone()
+                        } else {
+                            panic!("Expected attribute key identifier");
+                        };
+
+                        if let Some(Token::Colon) = tokens.next() {
+                        } else {
+                            panic!("Expected ':' after attribute key");
+                        }
+
+                        let value = match tokens.next() {
+                            Some(Token::Identifier(v)) => v.clone(),
+                            Some(Token::Number(n)) => n.to_string().clone(),
+                            other => panic!("Expected attribute value, found {other:?}"),
+                        };
+
+                        attributes.0.insert(key, value);
+                    }
+                } else {
+                    panic!("Expected '{{' after '#'");
+                }
+            }
+
             // Nesting
             if let Some(Token::LBrace) = tokens.peek() {
                 tokens.next();
@@ -212,6 +259,7 @@ impl Parser {
                 value,
                 children,
                 styles,
+                attributes
             }
         } else {
             panic!("Expected '>' at start of element");
