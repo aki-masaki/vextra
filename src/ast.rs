@@ -2,6 +2,7 @@
 pub enum ASTNode {
     App {
         children: Vec<ASTNode>,
+        title: String,
     },
     Element {
         name: String,
@@ -13,8 +14,8 @@ pub enum ASTNode {
 impl ASTNode {
     pub fn render_html(&self) -> String {
         match self {
-            ASTNode::App { children } => {
-                let mut html = String::from("<html><head></head><body>");
+            ASTNode::App { children, title } => {
+                let mut html = format!("<html><head><title>{title}</title></head><body>");
 
                 for child in children {
                     html.push_str(&child.render_html());

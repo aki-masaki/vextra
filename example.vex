@@ -1,4 +1,4 @@
-app {
+app:"Page Title" {
   >div {
     >label:"Hello World"
     >label:"Second label"

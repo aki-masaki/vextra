@@ -77,21 +77,28 @@ impl Parser {
                 // todo: Implement an expect_token function
 
                 let mut children = Vec::new();
+                let mut title = String::from("Website");
 
-                while let Some(token) = tokens.peek() {
-                    if matches!(token, Token::RBrace) {
+                while let Some(token) = tokens.peek().cloned() {
+                    if let Token::Colon = token {
                         tokens.next();
+
+                        if let Some(Token::Literal(value)) = tokens.next() {
+                            title = value.to_string();
+                        }
+                    } else if let Token::RBrace = token {
+                        tokens.next();
+
                         break;
+                    } else {
+                        tokens.next(); // Skip {
+
+                        let node = Parser::parse_element(&mut tokens);
+                        children.push(node);
                     }
-
-                    tokens.next(); // Skip {
-
-                    let node = Parser::parse_element(&mut tokens);
-
-                    children.push(node);
                 }
 
-                ASTNode::App { children }
+                ASTNode::App { children, title }
             }
             _ => panic!("Expected 'app'"),
         }
