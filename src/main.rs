@@ -3,6 +3,7 @@ use crate::args::parse_args;
 
 mod args;
 mod parser;
+mod ast;
 
 fn main() -> Result<(), std::io::Error> {
     let args = match parse_args() {
@@ -27,7 +28,7 @@ fn main() -> Result<(), std::io::Error> {
     let tokens = parser.tokenize();
     let ast = parser.parse(&tokens);
 
-    println!("{:?}", ast);
+    println!("{}", ast.render_html());
 
     Ok(())
 }

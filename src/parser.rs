@@ -1,3 +1,4 @@
+use crate::ast::ASTNode;
 use std::iter::Peekable;
 
 pub struct Parser {
@@ -13,12 +14,6 @@ pub enum Token {
     Gt,
     Colon,
     EOF,
-}
-
-#[derive(Debug)]
-pub enum ASTNode {
-    App { children: Vec<ASTNode> },
-    Element { name: String, value: String },
 }
 
 impl Parser {

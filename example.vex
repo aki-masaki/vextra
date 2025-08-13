@@ -1,3 +1,4 @@
 app {
   >label:"Hello World"
+  >label:"Second label"
 }
