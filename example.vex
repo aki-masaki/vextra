@@ -1,8 +1,13 @@
 app:"Page Title" {
-  >div {
-    >label:"Hello World"  #{fg:green}
-    >label:"Second label" #{fg:red,   size:big}
+  >div #{display:flex, direction:vertical, align:center, justify:center, width:fill, height:fill, gap:big} {
+    >label:"Log in"  #{fg:green, size: big}
     >input %{type:text, placeholder:Username}
+    >input %{type:password, placeholder:Password}
+
+    >button {
+      >label:"Log in"
+    }
+
   }
 }
 

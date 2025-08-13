@@ -22,37 +22,43 @@ pub enum ASTNode {
 }
 
 const DEFAULT_STYLES: &str = r#"
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    @import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap');
 
-        body {
-            background-color: black;
-            color: white;
-            font-family: monospace;
-        }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Source Code Pro", monospace;
+    }
 
-        label {
-            display: block;
-            margin-bottom: 0.5em;
-        }
+    body {
+        background-color: black;
+        color: white;
+        width: 100vw;
+        height: 100vh;
+    }
 
-        input, button, textarea {
-            background: #111;
-            color: white;
-            border: 1px solid #333;
-            padding: 0.4em;
-            border-radius: 4px;
-            font-size: 1.1em;
-        }
+    label {
+        display: block;
+        margin-bottom: 0.5em;
+    }
 
-        ::placeholder {
-            color: #888;
-        }
-    </style>
+    input, button, textarea {
+        background: #111;
+        color: white;
+        border: 1px solid #333;
+        padding: 0.4em;
+        border-radius: 4px;
+        font-size: 1.1em;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    ::placeholder {
+        color: #888;
+    }
 "#;
 
 impl ASTNode {
@@ -60,7 +66,7 @@ impl ASTNode {
         match self {
             ASTNode::App { children, title } => {
                 let mut html = format!(
-                    "<html><head><title>{title}</title><style>{DEFAULT_STYLES}</style></head><body>"
+                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style></head><body>"
                 );
 
                 for child in children {
@@ -137,6 +143,9 @@ impl ASTNode {
         String::from(match key.as_str() {
             "size" => "font-size",
             "fg" => "color",
+            "justify" => "justify-content",
+            "align" => "align-items",
+            "direction" => "flex-direction",
             _ => key.as_str(),
         })
     }
@@ -146,6 +155,8 @@ impl ASTNode {
             "red" => "#E43636",
             "green" => "#8ABB6C",
             "big" => "30px",
+            "fill" => "100%",
+            "vertical" => "column",
             _ => value.as_str(),
         })
     }

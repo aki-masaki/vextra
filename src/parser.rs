@@ -1,5 +1,5 @@
-use crate::ast::Attributes;
 use crate::ast::ASTNode;
+use crate::ast::Attributes;
 use crate::ast::Styles;
 use std::collections::HashMap;
 use std::iter::Peekable;
@@ -21,7 +21,8 @@ pub enum Token {
     Hash,
     Comma,
     At,
-    Percent
+    Percent,
+    Semicolon,
 }
 
 impl Parser {
@@ -43,6 +44,7 @@ impl Parser {
                 ',' => tokens.push(Token::Comma),
                 '@' => tokens.push(Token::At),
                 '%' => tokens.push(Token::Percent),
+                ';' => tokens.push(Token::Semicolon),
                 '"' => {
                     let mut literal = String::new();
 
@@ -116,11 +118,26 @@ impl Parser {
                         tokens.next();
 
                         break;
+                    } else if let Token::Semicolon = token {
+                        tokens.next(); // skip first ;
+
+                        while let Some(next) = tokens.peek() {
+                            if matches!(next, Token::Semicolon) {
+                                tokens.next(); // skip second ;
+
+                                break;
+                            }
+
+                            tokens.next();
+                        }
                     } else {
                         tokens.next(); // Skip {
 
                         let node = Parser::parse_element(&mut tokens);
-                        children.push(node);
+
+                        if let Some(node) = node {
+                            children.push(node);
+                        }
                     }
                 }
 
@@ -130,7 +147,24 @@ impl Parser {
         }
     }
 
-    fn parse_element<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a Token>>) -> ASTNode {
+    fn parse_element<'a>(
+        tokens: &mut Peekable<impl Iterator<Item = &'a Token>>,
+    ) -> Option<ASTNode> {
+        // Comments
+        if let Some(Token::Semicolon) = tokens.peek() {
+            tokens.next(); // skip first ;
+
+            while let Some(next) = tokens.peek() {
+                if matches!(next, Token::Semicolon) {
+                    tokens.next(); // skip second ;
+
+                    break;
+                }
+
+                tokens.next();
+            }
+        }
+
         if let Some(Token::Gt) = tokens.peek() {
             tokens.next();
 
@@ -235,7 +269,7 @@ impl Parser {
                         attributes.0.insert(key, value);
                     }
                 } else {
-                    panic!("Expected '{{' after '#'");
+                    panic!("Expected '{{' after '%'");
                 }
             }
 
@@ -250,17 +284,22 @@ impl Parser {
                     }
 
                     let child = Parser::parse_element(tokens);
-                    children.push(child);
+
+                    if let Some(child) = child {
+                        children.push(child);
+                    }
                 }
             }
 
-            ASTNode::Element {
+            Some(ASTNode::Element {
                 name,
                 value,
                 children,
                 styles,
-                attributes
-            }
+                attributes,
+            })
+        } else if let Some(Token::RBrace) = tokens.peek() {
+            None
         } else {
             panic!("Expected '>' at start of element");
         }
