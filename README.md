@@ -21,3 +21,29 @@ I want Vextra to be:
 ## Goals 
 
 Custom parser + transpiler from `.vex` files to HTML, CSS, Javascript, all done with a simple command.
+
+## Example Syntax
+
+```vex
+app:"Page Title" {
+  >div {
+    >label:"Hello World"  #{fg:green}
+    >label:"Second label" #{fg:red,   size:big}
+  }
+}
+```
+The above will get converted to:
+
+```html
+<html>
+  <head>
+    <title>Page Title</title>
+  </head>
+  <body style="background-color: black; font-family: monospace;">
+    <div>
+      <span style="color:#8ABB6C;">Hello World</span>
+      <span style="color:#E43636;font-size:30px;">Second label</span>
+    </div>
+  </body>
+</html>
+```
