@@ -4,3 +4,4 @@ app:"Page Title" {
     >label:"Second label" #{fg:red,   size:big}
   }
 }
+

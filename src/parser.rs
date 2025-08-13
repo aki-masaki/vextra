@@ -17,7 +17,8 @@ pub enum Token {
     Colon,
     Eof,
     Hash,
-    Comma
+    Comma,
+    Number(i16),
 }
 
 impl Parser {
@@ -65,6 +66,20 @@ impl Parser {
                     }
 
                     tokens.push(Token::Identifier(ident));
+                }
+                c if c.is_numeric() => {
+                    let mut number = String::new();
+                    number.push(c);
+
+                    while let Some(&next) = chars.peek() {
+                        if next.is_numeric() {
+                            number.push(chars.next().unwrap());
+                        } else {
+                            break;
+                        }
+                    }
+
+                    tokens.push(Token::Number(number.parse::<i16>().unwrap()));
                 }
                 _ => {}
             }
@@ -166,6 +181,7 @@ impl Parser {
 
                         let value = match tokens.next() {
                             Some(Token::Identifier(v)) => v.clone(),
+                            Some(Token::Number(n)) => n.to_string().clone(),
                             other => panic!("Expected style value, found {other:?}"),
                         };
 
