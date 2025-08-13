@@ -8,7 +8,7 @@ FLAGS:
   -h, --help            Prints help information
 
 OPTIONS:
-  --output PATH         Sets an output path [default: /out]
+  --output PATH         Sets an output path [default: index.html]
 
 ARGS:
   <INPUT> The .vex file to parse
@@ -24,7 +24,7 @@ pub fn parse_args() -> Result<AppArgs, pico_args::Error> {
     let mut pargs = pico_args::Arguments::from_env();
 
     if pargs.contains(["-h", "--help"]) {
-        print!("{}", HELP);
+        print!("{HELP}");
         std::process::exit(0);
     }
 

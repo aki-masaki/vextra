@@ -1,4 +1,6 @@
 use crate::ast::ASTNode;
+use crate::ast::Styles;
+use std::collections::HashMap;
 use std::iter::Peekable;
 
 pub struct Parser {
@@ -13,7 +15,9 @@ pub enum Token {
     RBrace,
     Gt,
     Colon,
-    EOF,
+    Eof,
+    Hash,
+    Comma
 }
 
 impl Parser {
@@ -31,7 +35,9 @@ impl Parser {
                 '}' => tokens.push(Token::RBrace),
                 '>' => tokens.push(Token::Gt),
                 ':' => tokens.push(Token::Colon),
-                c if c == '"' => {
+                '#' => tokens.push(Token::Hash),
+                ',' => tokens.push(Token::Comma),
+                '"' => {
                     let mut literal = String::new();
 
                     while let Some(&next) = chars.peek() {
@@ -64,7 +70,7 @@ impl Parser {
             }
         }
 
-        tokens.push(Token::EOF);
+        tokens.push(Token::Eof);
 
         tokens
     }
@@ -117,8 +123,12 @@ impl Parser {
             let mut value = String::new();
             let mut children = Vec::new();
 
+            let mut styles = Styles(HashMap::new());
+
+            // Value
             if let Some(Token::Colon) = tokens.peek() {
                 tokens.next();
+
                 value = if let Some(Token::Literal(val)) = tokens.next() {
                     val.clone()
                 } else {
@@ -126,6 +136,47 @@ impl Parser {
                 };
             }
 
+            // Styling
+            if let Some(Token::Hash) = tokens.peek() {
+                tokens.next(); // skip #
+
+                if let Some(Token::LBrace) = tokens.peek() {
+                    tokens.next(); // skip {
+
+                    while let Some(token) = tokens.peek() {
+                        if matches!(token, Token::RBrace) {
+                            tokens.next(); // skip }
+                            break;
+                        }
+
+                        if matches!(token, Token::Comma) {
+                            tokens.next(); // skip ,
+                        }
+
+                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
+                            k.clone()
+                        } else {
+                            panic!("Expected style key identifier");
+                        };
+
+                        if let Some(Token::Colon) = tokens.next() {
+                        } else {
+                            panic!("Expected ':' after style key");
+                        }
+
+                        let value = match tokens.next() {
+                            Some(Token::Identifier(v)) => v.clone(),
+                            other => panic!("Expected style value, found {other:?}"),
+                        };
+
+                        styles.0.insert(key, value);
+                    }
+                } else {
+                    panic!("Expected '{{' after '#'");
+                }
+            }
+
+            // Nesting
             if let Some(Token::LBrace) = tokens.peek() {
                 tokens.next();
 
@@ -144,6 +195,7 @@ impl Parser {
                 name,
                 value,
                 children,
+                styles,
             }
         } else {
             panic!("Expected '>' at start of element");
