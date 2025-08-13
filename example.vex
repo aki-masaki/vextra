@@ -1,4 +1,6 @@
 app {
-  >label:"Hello World"
-  >label:"Second label"
+  >div {
+    >label:"Hello World"
+    >label:"Second label"
+  }
 }

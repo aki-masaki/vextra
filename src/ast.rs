@@ -1,7 +1,13 @@
 #[derive(Debug)]
 pub enum ASTNode {
-    App { children: Vec<ASTNode> },
-    Element { name: String, value: String },
+    App {
+        children: Vec<ASTNode>,
+    },
+    Element {
+        name: String,
+        value: String,
+        children: Vec<ASTNode>,
+    },
 }
 
 impl ASTNode {
@@ -18,12 +24,33 @@ impl ASTNode {
 
                 html
             }
-            ASTNode::Element { name, value } => match name.as_str() {
-                "label" => {
-                    format!("<span>{value}</span>")
+            ASTNode::Element {
+                name,
+                value,
+                children,
+            } => {
+                let mut html = String::new();
+                let tag_name = ASTNode::get_tag_name(name.to_string());
+
+                html.push_str(format!("<{}>", tag_name).as_str());
+
+                html.push_str(value);
+
+                for child in children {
+                    html.push_str(&child.render_html());
                 }
-                _ => format!("<{name}>{value}</{name}>"),
-            },
+
+                html.push_str(format!("</{}>", tag_name).as_str());
+
+                html
+            }
         }
+    }
+
+    pub fn get_tag_name(name: String) -> String {
+        String::from(match name.as_str() {
+            "label" => "span",
+            _ => name.as_str(),
+        })
     }
 }
