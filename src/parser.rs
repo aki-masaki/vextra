@@ -52,6 +52,12 @@ impl Parser {
                 '$' => {
                     tokens.push(Token::Dollar);
 
+                    if let Some('$') = chars.peek() {
+                        chars.next();
+                    } else {
+                        continue;
+                    }
+
                     // Skip "logic `"
                     while let Some(&next) = chars.peek() {
                         chars.next();
@@ -296,6 +302,30 @@ impl Parser {
                 };
 
                 attributes.0.insert(String::from("data-model"), binding);
+            }
+
+            // Button binding
+            if let Some(Token::Dollar) = tokens.peek() {
+                tokens.next(); // Skip $
+
+                let event = if let Some(Token::Identifier(val)) = tokens.next() {
+                    val.clone()
+                } else {
+                    panic!("Expected identifier after '$'");
+                };
+
+                if let Some(Token::Colon) = tokens.next() {
+                } else {
+                    panic!("Expected : after '$' event key");
+                }
+
+                let code = if let Some(Token::Literal(code)) = tokens.next() {
+                    code.clone()
+                } else {
+                    panic!("Expected literal after ':'");
+                };
+
+                attributes.0.insert(format!("on{event}"), code);
             }
 
             // Value

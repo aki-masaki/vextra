@@ -4,7 +4,7 @@ app:"Page Title" {
     password: ""
   }
 
-  $logic `
+  $$logic `
     let login = () => {
       console.log("login");
       // handle login logic
@@ -17,7 +17,7 @@ app:"Page Title" {
     >input ~ username %{type:text, placeholder:Username}
     >input ~ password %{type:password, placeholder:Password}
 
-    >button {
+    >button $click:"login()" {
       >label:"Log in"
     }
   }
