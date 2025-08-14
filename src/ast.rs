@@ -220,7 +220,7 @@ impl ASTNode {
       }});
       
       updateVisibility();
-      updateLists();
+      updateLists(prop, value);
 
       return true;
     }}
@@ -263,10 +263,10 @@ impl ASTNode {
     }});
   }}
 
-  function updateLists() {{
-    document.querySelectorAll('[data-list]').forEach(el => {{
-      let list = state[el.getAttribute('data-list')];
+  function updateLists(prop, value) {{
+    value = value || state[prop];
 
+    document.querySelectorAll(prop === "" ? "[data-list]" : `[data-list="${{prop}}"]`).forEach(el => {{
       // keep the original template node (first child)
       let templateNode = el.children.item(0);
 
@@ -274,13 +274,13 @@ impl ASTNode {
         el.removeChild(el.lastChild);
       }}
 
-      for (let i = 0; i < list.length; i++) {{
+      for (let i = 0; i < value.length; i++) {{
         let clone = templateNode.cloneNode(true);
         clone.classList.remove('hidden');
 
-        let template = templateNode.textContent;
-        clone.textContent = template
-          .replace(/\[item\]/g, list[i])
+        let template = templateNode.innerHTML;
+        clone.innerHTML = template
+          .replace(/\[item\]/g, value[i])
           .replace(/\[index\]/g, i);
 
         el.appendChild(clone);

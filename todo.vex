@@ -11,13 +11,22 @@ app {
     const clear_tasks = () => {
       state.tasks = [];
     }
+    
+    const delete_task = (index) => {
+      state.tasks = state.tasks.toSpliced(index, 1);
+    }
   `
 
   >div #{column, center, fill_parent, gap:big} {
     >label:"Todo" #{fg:green size:big}
 
     [tasks] #{column} {
-      >label:"[index]: [item]"
+      >div {
+        >label:"[index]: [item]"
+        >button $click:"delete_task([index])" {
+          >label:"Delete"
+        }
+      }
     }
 
     >div #{display:flex, gap:big} {
