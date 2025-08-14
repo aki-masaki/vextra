@@ -13,10 +13,10 @@ app {
     }
   `
 
-  >div #{display:flex, direction:vertical, align:center, justify:center, width:fill, height:fill, gap:big} {
+  >div #{column, center, fill_parent, gap:big} {
     >label:"Todo" #{fg:green size:big}
 
-    [tasks] #{display: flex direction:vertical} {
+    [tasks] #{column} {
       >label:"[index]: [item]"
     }
 

@@ -189,89 +189,9 @@ impl Parser {
                         }
                         Token::LBrace => {
                             tokens.next();
-                        } // skip {
+                        }
                         Token::At => {
-                            tokens.next(); // skip @
-
-                            if let Some(Token::Identifier(id)) = tokens.next() {
-                                if id != "remember" {
-                                    panic!("Expected 'remember' after '@'");
-                                }
-
-                                match tokens.next() {
-                                    Some(Token::LBrace) => {}
-                                    _ => panic!("Expected block after '@remember'"),
-                                }
-
-                                loop {
-                                    match tokens.peek() {
-                                        Some(Token::RBrace) => {
-                                            tokens.next(); // skip }
-                                            break;
-                                        }
-
-                                        Some(_) => {
-                                            let key = match tokens.next() {
-                                                Some(Token::Identifier(k)) => k.clone(),
-                                                _ => panic!("Expected identifier for state key"),
-                                            };
-
-                                            match tokens.next() {
-                                                Some(Token::Colon) => {}
-                                                _ => panic!("Expected ':' after key"),
-                                            }
-
-                                            let value = match tokens.next() {
-                                                Some(Token::Identifier(v)) => v.clone(),
-                                                Some(Token::Number(n)) => n.to_string(),
-                                                Some(Token::Literal(v)) => v.clone(),
-                                                Some(Token::LBracket) => {
-                                                    let mut content = String::from("[");
-
-                                                    while let Some(token) = tokens.peek() {
-                                                        if matches!(token, Token::RBracket) {
-                                                            tokens.next();
-
-                                                            break;
-                                                        }
-
-                                                        match token {
-                                                            Token::Literal(v) => {
-                                                                content.push_str(v)
-                                                            }
-                                                            Token::Number(n) => {
-                                                                content.push_str(
-                                                                    n.to_string().as_str(),
-                                                                );
-                                                            }
-                                                            _ => {
-                                                                panic!("Unexpected token in array");
-                                                            }
-                                                        }
-
-                                                        tokens.next();
-                                                    }
-
-                                                    content.push(']');
-
-                                                    content
-                                                }
-                                                other => panic!("Expected value, got {other:?}"),
-                                            };
-
-                                            state.0.insert(key, value);
-
-                                            if let Some(Token::Comma) = tokens.peek() {
-                                                tokens.next(); // skip ,
-                                            }
-                                        }
-
-                                        None => {
-                                            panic!("Unexpected end of tokens in @remember block")
-                                        }
-                                    }
-                                }
-                            }
+                            state = Parser::handle_remember(&mut tokens);
                         }
                         Token::Dollar => {
                             tokens.next(); // skip $
@@ -301,6 +221,276 @@ impl Parser {
             }
             _ => panic!("Expected 'app'"),
         }
+    }
+
+    fn handle_remember<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a Token>>) -> State {
+        let mut state = State(HashMap::new());
+
+        tokens.next(); // skip @
+
+        if let Some(Token::Identifier(id)) = tokens.next() {
+            if id != "remember" {
+                panic!("Expected 'remember' after '@'");
+            }
+
+            match tokens.next() {
+                Some(Token::LBrace) => {}
+                _ => panic!("Expected block after '@remember'"),
+            }
+
+            loop {
+                match tokens.peek() {
+                    Some(Token::RBrace) => {
+                        tokens.next(); // skip }
+                        break;
+                    }
+
+                    Some(_) => {
+                        let key = match tokens.next() {
+                            Some(Token::Identifier(k)) => k.clone(),
+                            _ => panic!("Expected identifier for state key"),
+                        };
+
+                        match tokens.next() {
+                            Some(Token::Colon) => {}
+                            _ => panic!("Expected ':' after key"),
+                        }
+
+                        let value = match tokens.next() {
+                            Some(Token::Identifier(v)) => v.clone(),
+                            Some(Token::Number(n)) => n.to_string(),
+                            Some(Token::Literal(v)) => v.clone(),
+                            Some(Token::LBracket) => {
+                                let mut content = String::from("[");
+
+                                while let Some(token) = tokens.peek() {
+                                    if matches!(token, Token::RBracket) {
+                                        tokens.next();
+
+                                        break;
+                                    }
+
+                                    match token {
+                                        Token::Literal(v) => content.push_str(v),
+                                        Token::Number(n) => {
+                                            content.push_str(n.to_string().as_str());
+                                        }
+                                        _ => {
+                                            panic!("Unexpected token in array");
+                                        }
+                                    }
+
+                                    tokens.next();
+                                }
+
+                                content.push(']');
+
+                                content
+                            }
+                            other => panic!("Expected value, got {other:?}"),
+                        };
+
+                        state.0.insert(key, value);
+
+                        if let Some(Token::Comma) = tokens.peek() {
+                            tokens.next(); // skip ,
+                        }
+                    }
+
+                    None => {
+                        panic!("Unexpected end of tokens in @remember block")
+                    }
+                }
+            }
+        }
+
+        state
+    }
+
+    fn handle_input_binding<'a>(
+        tokens: &mut Peekable<impl Iterator<Item = &'a Token>>,
+    ) -> Attributes {
+        let mut attributes = Attributes(HashMap::new());
+
+        tokens.next();
+
+        let binding = if let Some(Token::Identifier(val)) = tokens.next() {
+            val.clone()
+        } else {
+            panic!("Expected identifier after '~'");
+        };
+
+        attributes.0.insert(String::from("data-model"), binding);
+
+        attributes
+    }
+
+    fn handle_button_binding<'a>(
+        tokens: &mut Peekable<impl Iterator<Item = &'a Token>>,
+    ) -> Attributes {
+        tokens.next(); // Skip $
+
+        let mut attributes = Attributes(HashMap::new());
+
+        let event = if let Some(Token::Identifier(val)) = tokens.next() {
+            val.clone()
+        } else {
+            panic!("Expected identifier after '$'");
+        };
+
+        if let Some(Token::Colon) = tokens.next() {
+        } else {
+            panic!("Expected : after '$' event key");
+        }
+
+        let code = if let Some(Token::Literal(code)) = tokens.next() {
+            code.clone()
+        } else {
+            panic!("Expected literal after ':'");
+        };
+
+        attributes.0.insert(format!("on{event}"), code);
+
+        attributes
+    }
+
+    fn handle_style<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a Token>>) -> Styles {
+        tokens.next(); // skip #
+
+        let mut styles = Styles(HashMap::new());
+
+        if let Some(Token::LBrace) = tokens.peek() {
+            tokens.next(); // skip {
+
+            while let Some(token) = tokens.peek() {
+                if matches!(token, Token::RBrace) {
+                    tokens.next(); // skip }
+                    break;
+                }
+
+                if matches!(token, Token::Comma) {
+                    tokens.next(); // skip ,
+                }
+
+                let key = if let Some(Token::Identifier(k)) = tokens.next() {
+                    k.clone()
+                } else {
+                    panic!("Expected style key identifier");
+                };
+
+                if let Some(Token::Colon) = tokens.peek() {
+                    tokens.next();
+                }
+
+                let value = match tokens.peek() {
+                    Some(Token::Identifier(v)) => {
+                        tokens.next();
+                        v.clone()
+                    }
+                    Some(Token::Number(n)) => {
+                        tokens.next();
+                        n.to_string().clone()
+                    }
+                    Some(Token::Comma) => String::from("true"),
+                    Some(Token::RBrace) => String::from("true"),
+                    other => panic!("Expected style value, found {other:?}"),
+                };
+
+                styles.0.insert(key, value);
+            }
+        } else {
+            panic!("Expected '{{' after '#'");
+        }
+
+        styles
+    }
+
+    fn handle_attributes<'a>(tokens: &mut Peekable<impl Iterator<Item = &'a Token>>) -> Attributes {
+        tokens.next(); // skip %
+
+        let mut attributes = Attributes(HashMap::new());
+
+        if let Some(Token::LBrace) = tokens.peek() {
+            tokens.next(); // skip {
+
+            while let Some(token) = tokens.peek() {
+                if matches!(token, Token::RBrace) {
+                    tokens.next(); // skip }
+                    break;
+                }
+
+                if matches!(token, Token::Comma) {
+                    tokens.next(); // skip ,
+                }
+
+                let key = if let Some(Token::Identifier(k)) = tokens.next() {
+                    k.clone()
+                } else {
+                    panic!("Expected attribute key identifier");
+                };
+
+                if let Some(Token::Colon) = tokens.next() {
+                } else {
+                    panic!("Expected ':' after attribute key");
+                }
+
+                let value = match tokens.next() {
+                    Some(Token::Identifier(v)) => v.clone(),
+                    Some(Token::Number(n)) => n.to_string().clone(),
+                    other => panic!("Expected attribute value, found {other:?}"),
+                };
+
+                attributes.0.insert(key, value);
+            }
+        } else {
+            panic!("Expected '{{' after '%'");
+        }
+
+        attributes
+    }
+
+    fn handle_conditional_rendering<'a>(
+        tokens: &mut Peekable<impl Iterator<Item = &'a Token>>,
+    ) -> Attributes {
+        tokens.next(); // skip ?
+
+        let mut attributes = Attributes(HashMap::new());
+
+        if let Some(Token::LBrace) = tokens.peek() {
+            tokens.next(); // skip {
+
+            while let Some(token) = tokens.peek() {
+                if matches!(token, Token::RBrace) {
+                    tokens.next(); // skip }
+                    break;
+                }
+
+                let left = if let Some(Token::Identifier(k)) = tokens.next() {
+                    k.clone()
+                } else {
+                    panic!("Expected identifier for left operand");
+                };
+
+                if let Some(Token::Equals) = tokens.next() {
+                } else {
+                    panic!("Expected '=='");
+                }
+
+                let right = match tokens.next() {
+                    Some(Token::Number(n)) => n.to_string().clone(),
+                    Some(Token::Literal(l)) => l.clone(),
+                    other => panic!("Expected attribute value, found {other:?}"),
+                };
+
+                attributes
+                    .0
+                    .insert(String::from("data-if"), format!("{left},{right}"));
+            }
+        } else {
+            panic!("Expected '{{' after '?'");
+        }
+
+        attributes
     }
 
     fn parse_element<'a>(
@@ -336,182 +526,39 @@ impl Parser {
             let mut styles = Styles(HashMap::new());
             let mut attributes = Attributes(HashMap::new());
 
-            // Input binding
-            if let Some(Token::Tilde) = tokens.peek() {
-                tokens.next();
-
-                let binding = if let Some(Token::Identifier(val)) = tokens.next() {
-                    val.clone()
-                } else {
-                    panic!("Expected identifier after '~'");
-                };
-
-                attributes.0.insert(String::from("data-model"), binding);
-            }
-
-            // Button binding
-            if let Some(Token::Dollar) = tokens.peek() {
-                tokens.next(); // Skip $
-
-                let event = if let Some(Token::Identifier(val)) = tokens.next() {
-                    val.clone()
-                } else {
-                    panic!("Expected identifier after '$'");
-                };
-
-                if let Some(Token::Colon) = tokens.next() {
-                } else {
-                    panic!("Expected : after '$' event key");
-                }
-
-                let code = if let Some(Token::Literal(code)) = tokens.next() {
-                    code.clone()
-                } else {
-                    panic!("Expected literal after ':'");
-                };
-
-                attributes.0.insert(format!("on{event}"), code);
-            }
-
-            // Value
-            if let Some(Token::Colon) = tokens.peek() {
-                tokens.next();
-
-                value = if let Some(Token::Literal(val)) = tokens.next() {
-                    val.clone()
-                } else {
-                    panic!("Expected string literal after ':'");
-                };
-            }
-
-            // Styling
-            if let Some(Token::Hash) = tokens.peek() {
-                tokens.next(); // skip #
-
-                if let Some(Token::LBrace) = tokens.peek() {
-                    tokens.next(); // skip {
-
-                    while let Some(token) = tokens.peek() {
-                        if matches!(token, Token::RBrace) {
-                            tokens.next(); // skip }
-                            break;
-                        }
-
-                        if matches!(token, Token::Comma) {
-                            tokens.next(); // skip ,
-                        }
-
-                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
-                            k.clone()
-                        } else {
-                            panic!("Expected style key identifier");
-                        };
-
-                        if let Some(Token::Colon) = tokens.next() {
-                        } else {
-                            panic!("Expected ':' after style key");
-                        }
-
-                        let value = match tokens.next() {
-                            Some(Token::Identifier(v)) => v.clone(),
-                            Some(Token::Number(n)) => n.to_string().clone(),
-                            other => panic!("Expected style value, found {other:?}"),
-                        };
-
-                        styles.0.insert(key, value);
+            while let Some(token) = tokens.peek() {
+                match token {
+                    Token::Tilde => {
+                        attributes.0.extend(Parser::handle_input_binding(tokens).0);
                     }
-                } else {
-                    panic!("Expected '{{' after '#'");
-                }
-            }
-
-            // Attributes
-            if let Some(Token::Percent) = tokens.peek() {
-                tokens.next(); // skip %
-
-                if let Some(Token::LBrace) = tokens.peek() {
-                    tokens.next(); // skip {
-
-                    while let Some(token) = tokens.peek() {
-                        if matches!(token, Token::RBrace) {
-                            tokens.next(); // skip }
-                            break;
-                        }
-
-                        if matches!(token, Token::Comma) {
-                            tokens.next(); // skip ,
-                        }
-
-                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
-                            k.clone()
-                        } else {
-                            panic!("Expected attribute key identifier");
-                        };
-
-                        if let Some(Token::Colon) = tokens.next() {
-                        } else {
-                            panic!("Expected ':' after attribute key");
-                        }
-
-                        let value = match tokens.next() {
-                            Some(Token::Identifier(v)) => v.clone(),
-                            Some(Token::Number(n)) => n.to_string().clone(),
-                            other => panic!("Expected attribute value, found {other:?}"),
-                        };
-
-                        attributes.0.insert(key, value);
+                    Token::Dollar => {
+                        attributes.0.extend(Parser::handle_button_binding(tokens).0);
                     }
-                } else {
-                    panic!("Expected '{{' after '%'");
-                }
-            }
+                    Token::Colon => {
+                        tokens.next();
 
-            // Conditional rendering
-            if let Some(Token::QuestionMark) = tokens.peek() {
-                println!("{:?}", tokens.peek());
-                tokens.next();
-
-                if let Some(Token::LBrace) = tokens.peek() {
-                    println!("{:?}", tokens.peek());
-                    tokens.next(); // skip {
-
-                    while let Some(token) = tokens.peek() {
-                        println!("{token:?}");
-
-                        if matches!(token, Token::RBrace) {
-                            tokens.next(); // skip }
-                            break;
-                        }
-
-                        let left = if let Some(Token::Identifier(k)) = tokens.next() {
-                            k.clone()
+                        value = if let Some(Token::Literal(val)) = tokens.next() {
+                            val.clone()
                         } else {
-                            panic!("Expected identifier for left operand");
+                            panic!("Expected string literal after ':'");
                         };
-
-                        println!("{:?}", tokens.peek());
-
-                        if let Some(Token::Equals) = tokens.next() {
-                        } else {
-                            panic!("Expected '=='");
-                        }
-
-                        let right = match tokens.next() {
-                            Some(Token::Number(n)) => n.to_string().clone(),
-                            Some(Token::Literal(l)) => l.clone(),
-                            other => panic!("Expected attribute value, found {other:?}"),
-                        };
-
+                    }
+                    Token::Hash => {
+                        styles = Parser::handle_style(tokens);
+                    }
+                    Token::Percent => {
+                        attributes.0.extend(Parser::handle_attributes(tokens).0);
+                    }
+                    Token::QuestionMark => {
                         attributes
                             .0
-                            .insert(String::from("data-if"), format!("{left},{right}"));
+                            .extend(Parser::handle_conditional_rendering(tokens).0);
                     }
-                } else {
-                    panic!("Expected '{{' after '?'");
+                    Token::LBrace => break, // done with attributes/modifiers
+                    _ => break,
                 }
             }
 
-            // Nesting
             if let Some(Token::LBrace) = tokens.peek() {
                 tokens.next();
 
@@ -561,48 +608,11 @@ impl Parser {
 
             tokens.next(); // skip ]
 
-            let mut styles = Styles(HashMap::new());
-
-            // Styling
-            if let Some(Token::Hash) = tokens.peek() {
-                tokens.next(); // skip #
-
-                if let Some(Token::LBrace) = tokens.peek() {
-                    tokens.next(); // skip {
-
-                    while let Some(token) = tokens.peek() {
-                        if matches!(token, Token::RBrace) {
-                            tokens.next(); // skip }
-                            break;
-                        }
-
-                        if matches!(token, Token::Comma) {
-                            tokens.next(); // skip ,
-                        }
-
-                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
-                            k.clone()
-                        } else {
-                            panic!("Expected style key identifier");
-                        };
-
-                        if let Some(Token::Colon) = tokens.next() {
-                        } else {
-                            panic!("Expected ':' after style key");
-                        }
-
-                        let value = match tokens.next() {
-                            Some(Token::Identifier(v)) => v.clone(),
-                            Some(Token::Number(n)) => n.to_string().clone(),
-                            other => panic!("Expected style value, found {other:?}"),
-                        };
-
-                        styles.0.insert(key, value);
-                    }
-                } else {
-                    panic!("Expected '{{' after '#'");
-                }
-            }
+            let styles = if let Some(Token::Hash) = tokens.peek() {
+                Parser::handle_style(tokens)
+            } else {
+                Styles(HashMap::new())
+            };
 
             tokens.next(); // skip {
 
@@ -619,7 +629,6 @@ impl Parser {
             let mut attributes = Attributes(HashMap::new());
 
             attributes.0.insert(String::from("data-list"), list);
-
 
             Some(ASTNode::Element {
                 name: String::from("div"),

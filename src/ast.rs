@@ -151,14 +151,20 @@ impl ASTNode {
         let mut css = String::new();
 
         for style in styles.0.clone() {
-            css.push_str(
-                format!(
-                    "{}:{};",
-                    ASTNode::convert_style_keys(style.0),
-                    ASTNode::convert_style_values(style.1)
-                )
-                .as_str(),
-            );
+            match style.0.as_str() {
+                "column" => css.push_str("display: flex; flex-direction: column;"),
+                "bold" => css.push_str("font-weigth: bold;"),
+                "fill_parent" => css.push_str("width: 100%; height: 100%;"),
+                "center" => css.push_str("justify-content: center; align-items: center;"),
+                _ => css.push_str(
+                    format!(
+                        "{}:{};",
+                        ASTNode::convert_style_keys(style.0),
+                        ASTNode::convert_style_values(style.1)
+                    )
+                    .as_str(),
+                ),
+            }
         }
 
         css
