@@ -12,7 +12,7 @@ app:"Page Title" {
   `
 
   >div #{display:flex, direction:vertical, align:center, justify:center, width:fill, height:fill, gap:big} {
-    >label:"Hello {username}" #{fg:red, size:big}
+    >label:"Hello {username}" #{fg:red, size:big} ?{username == "niki"}
     >label:"Log in"  #{fg:green, size:big}
     >input ~ username %{type:text, placeholder:Username}
     >input ~ password %{type:password, placeholder:Password}

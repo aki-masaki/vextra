@@ -26,6 +26,8 @@ pub enum Token {
     Semicolon,
     Tilde,
     Dollar,
+    Equals,
+    QuestionMark,
 }
 
 impl Parser {
@@ -49,6 +51,14 @@ impl Parser {
                 '%' => tokens.push(Token::Percent),
                 ';' => tokens.push(Token::Semicolon),
                 '~' => tokens.push(Token::Tilde),
+                '?' => tokens.push(Token::QuestionMark),
+                '=' => {
+                    if let Some('=') = chars.peek() {
+                        tokens.push(Token::Equals);
+
+                        chars.next();
+                    }
+                }
                 '$' => {
                     tokens.push(Token::Dollar);
 
@@ -418,6 +428,53 @@ impl Parser {
                     }
                 } else {
                     panic!("Expected '{{' after '%'");
+                }
+            }
+
+            // Conditional rendering
+            if let Some(Token::QuestionMark) = tokens.peek() {
+
+                        println!("{:?}", tokens.peek());
+                tokens.next();
+
+                if let Some(Token::LBrace) = tokens.peek() {
+                        println!("{:?}", tokens.peek());
+                    tokens.next(); // skip {
+
+                    while let Some(token) = tokens.peek() {
+                        println!("{token:?}");
+
+                        if matches!(token, Token::RBrace) {
+                            tokens.next(); // skip }
+                            break;
+                        }
+
+                        let left = if let Some(Token::Identifier(k)) = tokens.next() {
+                            k.clone()
+                        } else {
+                            panic!("Expected identifier for left operand");
+                        };
+
+                        println!("{:?}", tokens.peek());
+
+                        if let Some(Token::Equals) = tokens.next() {
+                        } else {
+                            panic!("Expected '=='");
+                        }
+
+                        let right = match tokens.next() {
+                            Some(Token::Number(n)) => n.to_string().clone(),
+                            Some(Token::Literal(l)) => l.clone(),
+                            other => panic!("Expected attribute value, found {other:?}"),
+                        };
+
+                        attributes.0.insert(
+                            String::from("data-if"),
+                            format!("{left},{right}"),
+                        );
+                    }
+                } else {
+                    panic!("Expected '{{' after '?'");
                 }
             }
 

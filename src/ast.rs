@@ -64,6 +64,10 @@ const DEFAULT_STYLES: &str = r#"
     ::placeholder {
         color: #888;
     }
+
+    .hidden {
+        display: none;
+    }
 "#;
 
 impl ASTNode {
@@ -202,6 +206,9 @@ impl ASTNode {
       document.querySelectorAll(`[data-model="${{prop}}"]`).forEach(el => {{
         el.value = value;
       }});
+      
+      updateVisibility();
+
       return true;
     }}
   }});
@@ -218,7 +225,26 @@ impl ASTNode {
         state[key] = el.value;
       }});
     }});
+
+  updateVisibility();
   }});
+
+  function updateVisibility() {{
+    document.querySelectorAll('[data-if]').forEach(el => {{
+      const condition = el.getAttribute('data-if');
+
+      const index = condition.indexOf(','),
+        left = condition.slice(0, index),
+        right = condition.slice(index + 1);
+
+      if (state[left] == right) {{
+          el.classList.remove('hidden');
+      }} else {{
+          el.classList.add('hidden');
+      }}
+    }});
+  }}
+
 </script>
 "#
         )
