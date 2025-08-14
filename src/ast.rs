@@ -15,6 +15,7 @@ pub enum ASTNode {
         children: Vec<ASTNode>,
         title: String,
         state: State,
+        logic_code: String,
     },
     Element {
         name: String,
@@ -72,9 +73,10 @@ impl ASTNode {
                 children,
                 title,
                 state,
+                logic_code,
             } => {
                 let mut html = format!(
-                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style>{}</head><body>",
+                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style><script>{logic_code}</script>{}</head><body>",
                     ASTNode::render_javascript(state)
                 );
 

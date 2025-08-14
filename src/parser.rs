@@ -25,6 +25,7 @@ pub enum Token {
     Percent,
     Semicolon,
     Tilde,
+    Dollar,
 }
 
 impl Parser {
@@ -48,6 +49,32 @@ impl Parser {
                 '%' => tokens.push(Token::Percent),
                 ';' => tokens.push(Token::Semicolon),
                 '~' => tokens.push(Token::Tilde),
+                '$' => {
+                    tokens.push(Token::Dollar);
+
+                    // Skip "logic `"
+                    while let Some(&next) = chars.peek() {
+                        chars.next();
+
+                        if next == '`' {
+                            break;
+                        }
+                    }
+
+                    let mut literal = String::new();
+
+                    while let Some(&next) = chars.peek() {
+                        if next != '`' {
+                            literal.push(chars.next().unwrap());
+                        } else {
+                            chars.next();
+
+                            break;
+                        }
+                    }
+
+                    tokens.push(Token::Literal(literal));
+                }
                 '"' => {
                     let mut literal = String::new();
 
@@ -111,6 +138,7 @@ impl Parser {
                 let mut title = String::from("Website");
 
                 let mut state = State(HashMap::new());
+                let mut logic_code = String::new();
 
                 while let Some(token) = tokens.peek().cloned() {
                     match token {
@@ -194,7 +222,13 @@ impl Parser {
                                 }
                             }
                         }
+                        Token::Dollar => {
+                            tokens.next(); // skip $
 
+                            if let Some(Token::Literal(value)) = tokens.next() {
+                                logic_code = value.to_string();
+                            }
+                        }
                         _ => {
                             let node = Parser::parse_element(&mut tokens);
 
@@ -211,6 +245,7 @@ impl Parser {
                     children,
                     title,
                     state,
+                    logic_code,
                 }
             }
             _ => panic!("Expected 'app'"),

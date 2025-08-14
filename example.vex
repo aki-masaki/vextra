@@ -4,6 +4,13 @@ app:"Page Title" {
     password: ""
   }
 
+  $logic `
+    let login = () => {
+      console.log("login");
+      // handle login logic
+    }
+  `
+
   >div #{display:flex, direction:vertical, align:center, justify:center, width:fill, height:fill, gap:big} {
     >label:"Hello {username}" #{fg:red, size:big}
     >label:"Log in"  #{fg:green, size:big}

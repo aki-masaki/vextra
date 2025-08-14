@@ -36,7 +36,5 @@ fn main() -> Result<(), std::io::Error> {
     f.write_all(ast.render_html().as_bytes())?;
     f.flush()?;
 
-    println!("Done");
-
     Ok(())
 }
