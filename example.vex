@@ -1,6 +1,12 @@
 app:"Page Title" {
+  @remember {
+    username: ""
+    password: ""
+  }
+
   >div #{display:flex, direction:vertical, align:center, justify:center, width:fill, height:fill, gap:big} {
-    >label:"Log in"  #{fg:green, size: big}
+    >label:"Hello {username}" #{fg:red, size:big}
+    >label:"Log in"  #{fg:green, size:big}
     >input %{type:text, placeholder:Username}
     >input %{type:password, placeholder:Password}
 

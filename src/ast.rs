@@ -7,10 +7,14 @@ pub struct Styles(pub HashMap<String, String>);
 pub struct Attributes(pub HashMap<String, String>);
 
 #[derive(Debug)]
+pub struct State(pub HashMap<String, String>);
+
+#[derive(Debug)]
 pub enum ASTNode {
     App {
         children: Vec<ASTNode>,
         title: String,
+        state: State,
     },
     Element {
         name: String,
@@ -64,9 +68,14 @@ const DEFAULT_STYLES: &str = r#"
 impl ASTNode {
     pub fn render_html(&self) -> String {
         match self {
-            ASTNode::App { children, title } => {
+            ASTNode::App {
+                children,
+                title,
+                state,
+            } => {
                 let mut html = format!(
-                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style></head><body>"
+                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style>{}</head><body>",
+                    ASTNode::render_javascript(state)
                 );
 
                 for child in children {
@@ -96,6 +105,10 @@ impl ASTNode {
                     );
                 }
 
+                if let Some(var) = ASTNode::extract_braced_var(value) {
+                    html.push_str(format!("data-bind=\"{var}\"").as_str());
+                }
+
                 for attribute in &attributes.0 {
                     html.push_str(format!("{}=\"{}\"", attribute.0, attribute.1).as_str());
                 }
@@ -113,6 +126,12 @@ impl ASTNode {
                 html
             }
         }
+    }
+
+    fn extract_braced_var(s: &str) -> Option<&str> {
+        let start = s.find('{')?;
+        let end = s[start..].find('}')?;
+        Some(&s[start + 1..start + end])
     }
 
     pub fn get_tag_name(name: String) -> String {
@@ -159,5 +178,37 @@ impl ASTNode {
             "vertical" => "column",
             _ => value.as_str(),
         })
+    }
+
+    pub fn render_javascript(state: &State) -> String {
+        let js_state: String = state
+            .0
+            .iter()
+            .map(|(k, v)| format!("{k}: \"{v}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!(
+            r#"
+<script>
+  let state = new Proxy({{ {js_state} }}, {{
+    set(obj, prop, value) {{
+      obj[prop] = value;
+      document.querySelectorAll(`[data-bind="${{prop}}"]`).forEach(el => {{
+        el.textContent = el.getAttribute("data-template").replace(/\{{(.+?)\}}/g, (_, k) => state[k]);
+      }});
+      return true;
+    }}
+  }});
+
+  window.addEventListener('DOMContentLoaded', () => {{
+    document.querySelectorAll("[data-bind]").forEach(el => {{
+      el.setAttribute("data-template", el.textContent);
+      el.textContent = el.textContent.replace(/\{{(.+?)\}}/g, (_, k) => state[k]);
+    }});
+  }});
+</script>
+"#
+        )
     }
 }

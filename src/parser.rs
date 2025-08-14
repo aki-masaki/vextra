@@ -1,5 +1,6 @@
 use crate::ast::ASTNode;
 use crate::ast::Attributes;
+use crate::ast::State;
 use crate::ast::Styles;
 use std::collections::HashMap;
 use std::iter::Peekable;
@@ -107,41 +108,108 @@ impl Parser {
                 let mut children = Vec::new();
                 let mut title = String::from("Website");
 
+                let mut state = State(HashMap::new());
+
                 while let Some(token) = tokens.peek().cloned() {
-                    if let Token::Colon = token {
-                        tokens.next();
-
-                        if let Some(Token::Literal(value)) = tokens.next() {
-                            title = value.to_string();
-                        }
-                    } else if let Token::RBrace = token {
-                        tokens.next();
-
-                        break;
-                    } else if let Token::Semicolon = token {
-                        tokens.next(); // skip first ;
-
-                        while let Some(next) = tokens.peek() {
-                            if matches!(next, Token::Semicolon) {
-                                tokens.next(); // skip second ;
-
-                                break;
-                            }
-
+                    match token {
+                        Token::Colon => {
                             tokens.next();
+
+                            if let Some(Token::Literal(value)) = tokens.next() {
+                                title = value.to_string();
+                            }
                         }
-                    } else {
-                        tokens.next(); // Skip {
+                        Token::RBrace => {
+                            tokens.next();
 
-                        let node = Parser::parse_element(&mut tokens);
+                            break;
+                        }
+                        Token::Semicolon => {
+                            tokens.next(); // skip first ;
 
-                        if let Some(node) = node {
-                            children.push(node);
+                            while let Some(next) = tokens.peek() {
+                                if matches!(next, Token::Semicolon) {
+                                    tokens.next(); // skip second ;
+
+                                    break;
+                                }
+
+                                tokens.next();
+                            }
+                        }
+                        Token::LBrace => {
+                            tokens.next();
+                        } // skip {
+                        Token::At => {
+                            tokens.next(); // skip @
+
+                            if let Some(Token::Identifier(id)) = tokens.next() {
+                                if id != "remember" {
+                                    panic!("Expected 'remember' after '@'");
+                                }
+
+                                match tokens.next() {
+                                    Some(Token::LBrace) => {}
+                                    _ => panic!("Expected block after '@remember'"),
+                                }
+
+                                loop {
+                                    match tokens.peek() {
+                                        Some(Token::RBrace) => {
+                                            tokens.next(); // skip }
+                                            break;
+                                        }
+
+                                        Some(_) => {
+                                            let key = match tokens.next() {
+                                                Some(Token::Identifier(k)) => k.clone(),
+                                                _ => panic!("Expected identifier for state key"),
+                                            };
+
+                                            match tokens.next() {
+                                                Some(Token::Colon) => {}
+                                                _ => panic!("Expected ':' after key"),
+                                            }
+
+                                            let value = match tokens.next() {
+                                                Some(Token::Identifier(v)) => v.clone(),
+                                                Some(Token::Number(n)) => n.to_string(),
+                                                Some(Token::Literal(v)) => v.clone(),
+                                                other => panic!("Expected value, got {other:?}"),
+                                            };
+
+                                            state.0.insert(key, value);
+
+                                            if let Some(Token::Comma) = tokens.peek() {
+                                                tokens.next(); // skip ,
+                                            }
+                                        }
+
+                                        None => {
+                                            panic!("Unexpected end of tokens in @remember block")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        _ => {
+                            let node = Parser::parse_element(&mut tokens);
+
+                            if let Some(node) = node {
+                                children.push(node);
+                            } else {
+                                tokens.next();
+                            }
                         }
                     }
                 }
 
-                ASTNode::App { children, title }
+                ASTNode::App {
+                    children,
+                    title,
+                    state,
+                }
             }
             _ => panic!("Expected 'app'"),
         }
