@@ -1,4 +1,4 @@
-app:"Page Title" {
+app:"Login" {
   @remember {
     username: ""
     password: ""

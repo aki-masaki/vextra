@@ -28,6 +28,8 @@ pub enum Token {
     Dollar,
     Equals,
     QuestionMark,
+    LBracket,
+    RBracket,
 }
 
 impl Parser {
@@ -52,6 +54,8 @@ impl Parser {
                 ';' => tokens.push(Token::Semicolon),
                 '~' => tokens.push(Token::Tilde),
                 '?' => tokens.push(Token::QuestionMark),
+                '[' => tokens.push(Token::LBracket),
+                ']' => tokens.push(Token::RBracket),
                 '=' => {
                     if let Some('=') = chars.peek() {
                         tokens.push(Token::Equals);
@@ -221,6 +225,37 @@ impl Parser {
                                                 Some(Token::Identifier(v)) => v.clone(),
                                                 Some(Token::Number(n)) => n.to_string(),
                                                 Some(Token::Literal(v)) => v.clone(),
+                                                Some(Token::LBracket) => {
+                                                    let mut content = String::from("[");
+
+                                                    while let Some(token) = tokens.peek() {
+                                                        if matches!(token, Token::RBracket) {
+                                                            tokens.next();
+
+                                                            break;
+                                                        }
+
+                                                        match token {
+                                                            Token::Literal(v) => {
+                                                                content.push_str(v)
+                                                            }
+                                                            Token::Number(n) => {
+                                                                content.push_str(
+                                                                    n.to_string().as_str(),
+                                                                );
+                                                            }
+                                                            _ => {
+                                                                panic!("Unexpected token in array");
+                                                            }
+                                                        }
+
+                                                        tokens.next();
+                                                    }
+
+                                                    content.push(']');
+
+                                                    content
+                                                }
                                                 other => panic!("Expected value, got {other:?}"),
                                             };
 
@@ -433,12 +468,11 @@ impl Parser {
 
             // Conditional rendering
             if let Some(Token::QuestionMark) = tokens.peek() {
-
-                        println!("{:?}", tokens.peek());
+                println!("{:?}", tokens.peek());
                 tokens.next();
 
                 if let Some(Token::LBrace) = tokens.peek() {
-                        println!("{:?}", tokens.peek());
+                    println!("{:?}", tokens.peek());
                     tokens.next(); // skip {
 
                     while let Some(token) = tokens.peek() {
@@ -468,10 +502,9 @@ impl Parser {
                             other => panic!("Expected attribute value, found {other:?}"),
                         };
 
-                        attributes.0.insert(
-                            String::from("data-if"),
-                            format!("{left},{right}"),
-                        );
+                        attributes
+                            .0
+                            .insert(String::from("data-if"), format!("{left},{right}"));
                     }
                 } else {
                     panic!("Expected '{{' after '?'");
@@ -482,16 +515,28 @@ impl Parser {
             if let Some(Token::LBrace) = tokens.peek() {
                 tokens.next();
 
+                let mut depth = 1;
+
                 while let Some(token) = tokens.peek() {
-                    if matches!(token, Token::RBrace) {
-                        tokens.next();
-                        break;
-                    }
+                    match token {
+                        Token::LBrace => {
+                            tokens.next();
+                            depth += 1;
+                        }
+                        Token::RBrace => {
+                            tokens.next();
+                            depth -= 1;
+                            if depth == 0 {
+                                break;
+                            }
+                        }
+                        _ => {
+                            let child = Parser::parse_element(tokens);
 
-                    let child = Parser::parse_element(tokens);
-
-                    if let Some(child) = child {
-                        children.push(child);
+                            if let Some(child) = child {
+                                children.push(child);
+                            }
+                        }
                     }
                 }
             }
@@ -505,6 +550,84 @@ impl Parser {
             })
         } else if let Some(Token::RBrace) = tokens.peek() {
             None
+        } else if let Some(Token::LBracket) = tokens.peek() {
+            tokens.next(); // skip [
+
+            let list = if let Some(Token::Identifier(list)) = tokens.next() {
+                list.clone()
+            } else {
+                panic!("Expected identifier after '['")
+            };
+
+            tokens.next(); // skip ]
+
+            let mut styles = Styles(HashMap::new());
+
+            // Styling
+            if let Some(Token::Hash) = tokens.peek() {
+                tokens.next(); // skip #
+
+                if let Some(Token::LBrace) = tokens.peek() {
+                    tokens.next(); // skip {
+
+                    while let Some(token) = tokens.peek() {
+                        if matches!(token, Token::RBrace) {
+                            tokens.next(); // skip }
+                            break;
+                        }
+
+                        if matches!(token, Token::Comma) {
+                            tokens.next(); // skip ,
+                        }
+
+                        let key = if let Some(Token::Identifier(k)) = tokens.next() {
+                            k.clone()
+                        } else {
+                            panic!("Expected style key identifier");
+                        };
+
+                        if let Some(Token::Colon) = tokens.next() {
+                        } else {
+                            panic!("Expected ':' after style key");
+                        }
+
+                        let value = match tokens.next() {
+                            Some(Token::Identifier(v)) => v.clone(),
+                            Some(Token::Number(n)) => n.to_string().clone(),
+                            other => panic!("Expected style value, found {other:?}"),
+                        };
+
+                        styles.0.insert(key, value);
+                    }
+                } else {
+                    panic!("Expected '{{' after '#'");
+                }
+            }
+
+            tokens.next(); // skip {
+
+            let mut children = vec![];
+
+            let node = Parser::parse_element(tokens);
+
+            if let Some(node) = node {
+                children.push(node);
+            }
+
+            tokens.next(); // skip }
+
+            let mut attributes = Attributes(HashMap::new());
+
+            attributes.0.insert(String::from("data-list"), list);
+
+
+            Some(ASTNode::Element {
+                name: String::from("div"),
+                value: String::new(),
+                children,
+                styles,
+                attributes,
+            })
         } else {
             panic!("Expected '>' at start of element");
         }

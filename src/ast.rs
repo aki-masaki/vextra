@@ -80,7 +80,7 @@ impl ASTNode {
                 logic_code,
             } => {
                 let mut html = format!(
-                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style><script>{logic_code}</script>{}</head><body>",
+                    "<!DOCTYPE html><html><head><title>{title}</title><style>{DEFAULT_STYLES}</style>{}<script>{logic_code}</script></head><body>",
                     ASTNode::render_javascript(state)
                 );
 
@@ -190,7 +190,13 @@ impl ASTNode {
         let js_state: String = state
             .0
             .iter()
-            .map(|(k, v)| format!("{k}: \"{v}\""))
+            .map(|(k, v)| {
+                if v.starts_with('[') || (!v.is_empty() && v.chars().next().unwrap().is_numeric()) {
+                    format!("{k}: {v}")
+                } else {
+                    format!("{k}: \"{v}\"")
+                }
+            })
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -208,6 +214,7 @@ impl ASTNode {
       }});
       
       updateVisibility();
+      updateLists();
 
       return true;
     }}
@@ -226,7 +233,12 @@ impl ASTNode {
       }});
     }});
 
-  updateVisibility();
+    updateVisibility();
+    updateLists();
+
+    document.querySelectorAll('[data-list]').forEach(el => {{
+      el.children.item(0).classList.add('hidden');
+    }});
   }});
 
   function updateVisibility() {{
@@ -241,6 +253,31 @@ impl ASTNode {
           el.classList.remove('hidden');
       }} else {{
           el.classList.add('hidden');
+      }}
+    }});
+  }}
+
+  function updateLists() {{
+    document.querySelectorAll('[data-list]').forEach(el => {{
+      let list = state[el.getAttribute('data-list')];
+
+      // keep the original template node (first child)
+      let templateNode = el.children.item(0);
+
+      while (el.children.length > 1) {{
+        el.removeChild(el.lastChild);
+      }}
+
+      for (let i = 0; i < list.length; i++) {{
+        let clone = templateNode.cloneNode(true);
+        clone.classList.remove('hidden');
+
+        let template = templateNode.textContent;
+        clone.textContent = template
+          .replace(/\[item\]/g, list[i])
+          .replace(/\[index\]/g, i);
+
+        el.appendChild(clone);
       }}
     }});
   }}
