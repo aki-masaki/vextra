@@ -197,6 +197,9 @@ impl ASTNode {
       document.querySelectorAll(`[data-bind="${{prop}}"]`).forEach(el => {{
         el.textContent = el.getAttribute("data-template").replace(/\{{(.+?)\}}/g, (_, k) => state[k]);
       }});
+      document.querySelectorAll(`[data-model="${{prop}}"]`).forEach(el => {{
+        el.value = value;
+      }});
       return true;
     }}
   }});
@@ -205,6 +208,13 @@ impl ASTNode {
     document.querySelectorAll("[data-bind]").forEach(el => {{
       el.setAttribute("data-template", el.textContent);
       el.textContent = el.textContent.replace(/\{{(.+?)\}}/g, (_, k) => state[k]);
+    }});
+
+    document.querySelectorAll('[data-model]').forEach(el => {{
+      const key = el.getAttribute('data-model');
+      el.addEventListener('input', () => {{
+        state[key] = el.value;
+      }});
     }});
   }});
 </script>

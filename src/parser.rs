@@ -24,6 +24,7 @@ pub enum Token {
     At,
     Percent,
     Semicolon,
+    Tilde,
 }
 
 impl Parser {
@@ -46,6 +47,7 @@ impl Parser {
                 '@' => tokens.push(Token::At),
                 '%' => tokens.push(Token::Percent),
                 ';' => tokens.push(Token::Semicolon),
+                '~' => tokens.push(Token::Tilde),
                 '"' => {
                     let mut literal = String::new();
 
@@ -247,6 +249,19 @@ impl Parser {
 
             let mut styles = Styles(HashMap::new());
             let mut attributes = Attributes(HashMap::new());
+
+            // Input binding
+            if let Some(Token::Tilde) = tokens.peek() {
+                tokens.next();
+
+                let binding = if let Some(Token::Identifier(val)) = tokens.next() {
+                    val.clone()
+                } else {
+                    panic!("Expected identifier after '~'");
+                };
+
+                attributes.0.insert(String::from("data-model"), binding);
+            }
 
             // Value
             if let Some(Token::Colon) = tokens.peek() {
